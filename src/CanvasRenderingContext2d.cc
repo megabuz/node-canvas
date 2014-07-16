@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <algorithm>
+#include <cairo/cairo-pdf.h>
 #include "Canvas.h"
 #include "Point.h"
 #include "Image.h"
@@ -490,10 +491,15 @@ NAN_METHOD(Context2d::New) {
 NAN_METHOD(Context2d::AddPage) {
   NanScope();
   Context2d *context = ObjectWrap::Unwrap<Context2d>(args.This());
-  if (!context->canvas()->isPDF()) {
+  Canvas *canvas = context->canvas();
+  if (!canvas->isPDF()) {
     return NanThrowError("only PDF canvases support .nextPage()");
   }
   cairo_show_page(context->context());
+  int width = args[0]->IsNumber() ? args[0]->Uint32Value() : canvas->width;
+  int height = args[1]->IsNumber() ? args[1]->Uint32Value() : canvas->height;
+  cairo_pdf_surface_set_size(canvas->surface(), width, height);
+
   NanReturnUndefined();
 }
 

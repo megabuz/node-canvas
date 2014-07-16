@@ -24,12 +24,12 @@ function p(str) {
 reset();
 h1('PDF demo');
 p('Multi-page PDF demonstration');
-ctx.addPage();
+ctx.addPage(250);
 
 reset();
 h1('Page #2');
 p('This is the second page');
-ctx.addPage();
+ctx.addPage(250, 250);
 
 reset();
 h1('Page #3');
