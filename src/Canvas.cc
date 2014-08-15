@@ -38,6 +38,7 @@ Canvas::Initialize(Handle<Object> target) {
   // Prototype
   Local<ObjectTemplate> proto = ctor->PrototypeTemplate();
   NODE_SET_PROTOTYPE_METHOD(ctor, "toBuffer", ToBuffer);
+  NODE_SET_PROTOTYPE_METHOD(ctor, "getData", GetData);
   NODE_SET_PROTOTYPE_METHOD(ctor, "streamPNGSync", StreamPNGSync);
 #ifdef HAVE_JPEG
   NODE_SET_PROTOTYPE_METHOD(ctor, "streamJPEGSync", StreamJPEGSync);
@@ -335,6 +336,26 @@ NAN_METHOD(Canvas::ToBuffer) {
       closure_destroy(&closure);
       NanReturnValue(buf);
     }
+  }
+}
+
+NAN_METHOD(Canvas::GetData) {
+  NanScope();
+  Canvas *canvas = ObjectWrap::Unwrap<Canvas>(args.This());
+  cairo_surface_t *surface = canvas->surface();
+  cairo_surface_flush(surface);
+
+  if (canvas->isPDF()) {
+    cairo_surface_finish(surface);
+    closure_t *closure = (closure_t *) canvas->closure();
+
+    Local<Object> buf = NanNewBufferHandle((char*) closure->data, closure->len);
+    NanReturnValue(buf);
+  } else {
+    Local<Object> buf = NanNewBufferHandle(
+        (char*) cairo_image_surface_get_data(surface),
+        cairo_image_surface_get_height(surface) * cairo_image_surface_get_stride(surface));
+    NanReturnValue(buf);
   }
 }
 

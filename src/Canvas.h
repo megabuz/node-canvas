@@ -55,6 +55,7 @@ class Canvas: public node::ObjectWrap {
     static void Initialize(Handle<Object> target);
     static NAN_METHOD(New);
     static NAN_METHOD(ToBuffer);
+    static NAN_METHOD(GetData);
     static NAN_GETTER(GetType);
     static NAN_GETTER(GetWidth);
     static NAN_GETTER(GetHeight);
