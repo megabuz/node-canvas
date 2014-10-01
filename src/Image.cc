@@ -756,6 +756,8 @@ Image::decodeJPEGIntoSurface(jpeg_decompress_struct *args) {
  * dummy surface
  */
 
+static void jpeg_output_message(j_common_ptr cinfo) {}
+
 cairo_status_t
 Image::decodeJPEGBufferIntoMimeSurface(uint8_t *buf, unsigned len) {
   // TODO: remove this duplicate logic
@@ -763,6 +765,7 @@ Image::decodeJPEGBufferIntoMimeSurface(uint8_t *buf, unsigned len) {
   struct jpeg_decompress_struct args;
   struct jpeg_error_mgr err;
   args.err = jpeg_std_error(&err);
+  args.err->output_message = jpeg_output_message;
   jpeg_create_decompress(&args);
 
   jpeg_mem_src(&args, buf, len);
@@ -857,6 +860,7 @@ Image::loadJPEGFromBuffer(uint8_t *buf, unsigned len) {
   struct jpeg_decompress_struct args;
   struct jpeg_error_mgr err;
   args.err = jpeg_std_error(&err);
+  args.err->output_message = jpeg_output_message;
   jpeg_create_decompress(&args);
 
   jpeg_mem_src(&args, buf, len);
@@ -882,6 +886,7 @@ Image::loadJPEG(FILE *stream) {
     struct jpeg_decompress_struct args;
     struct jpeg_error_mgr err;
     args.err = jpeg_std_error(&err);
+    args.err->output_message = jpeg_output_message;
     jpeg_create_decompress(&args);
 
     jpeg_stdio_src(&args, stream);
