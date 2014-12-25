@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <setjmp.h>
 #include <node_buffer.h>
 
 #ifdef HAVE_GIF
@@ -756,16 +757,25 @@ Image::decodeJPEGIntoSurface(jpeg_decompress_struct *args) {
  * dummy surface
  */
 
-static void jpeg_output_message(j_common_ptr cinfo) {}
+struct canvas_error_mgr : public jpeg_error_mgr {
+    jmp_buf setjmp_buffer;
+};
+
+static void canvas_jpeg_output_message(j_common_ptr cinfo) {}
+
+static void canvas_jpeg_error_exit (j_common_ptr cinfo) {
+    canvas_error_mgr* err = (canvas_error_mgr*) cinfo->err;
+    longjmp(err->setjmp_buffer, 1);
+}
 
 cairo_status_t
 Image::decodeJPEGBufferIntoMimeSurface(uint8_t *buf, unsigned len) {
   // TODO: remove this duplicate logic
   // JPEG setup
   struct jpeg_decompress_struct args;
-  struct jpeg_error_mgr err;
+  struct canvas_error_mgr err;
   args.err = jpeg_std_error(&err);
-  args.err->output_message = jpeg_output_message;
+  args.err->output_message = canvas_jpeg_output_message;
   jpeg_create_decompress(&args);
 
   jpeg_mem_src(&args, buf, len);
@@ -858,9 +868,17 @@ Image::loadJPEGFromBuffer(uint8_t *buf, unsigned len) {
   // TODO: remove this duplicate logic
   // JPEG setup
   struct jpeg_decompress_struct args;
-  struct jpeg_error_mgr err;
+  struct canvas_error_mgr err;
   args.err = jpeg_std_error(&err);
-  args.err->output_message = jpeg_output_message;
+  args.err->output_message = canvas_jpeg_output_message;
+  args.err->error_exit = canvas_jpeg_error_exit;
+
+  if (setjmp(err.setjmp_buffer)) {
+    jpeg_abort_decompress(&args);
+    jpeg_destroy_decompress(&args);
+    return CAIRO_STATUS_READ_ERROR;
+  }
+
   jpeg_create_decompress(&args);
 
   jpeg_mem_src(&args, buf, len);
@@ -886,7 +904,7 @@ Image::loadJPEG(FILE *stream) {
     struct jpeg_decompress_struct args;
     struct jpeg_error_mgr err;
     args.err = jpeg_std_error(&err);
-    args.err->output_message = jpeg_output_message;
+    args.err->output_message = canvas_jpeg_output_message;
     jpeg_create_decompress(&args);
 
     jpeg_stdio_src(&args, stream);
